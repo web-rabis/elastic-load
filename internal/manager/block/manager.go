@@ -2,8 +2,8 @@ package block
 
 import (
 	"context"
-	"elastic-load/internal/adapter/database/drivers"
-	"elastic-load/internal/model"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers"
+	"github.com/web-rabis/elastic-load/internal/model"
 )
 
 type IManager interface {

@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  nlrk-elastic-load:
+    container_name: nlrk-elastic-load
+    image: shaisarov/nlrk-elastic-load
+    build:
+      context: .
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    ports:
+      - "8686:8686"
+    environment:
+      - LISTEN=:8686
+      - DEBUG=1
+      - DATASTORE=postgres
+      - DATASTORE_URL=postgres://postgres:postgres@192.168.7.241:5432/nlrk
+      - DATASTORE_DB=nlrk
+      - ELASTICSEARCH_URL=http://192.168.7.175:9200
+      - ELASTICSEARCH_INDEX=books_index
+    networks:
+      - web_rabis_network
+networks:
+  web_rabis_network:
+    external: true

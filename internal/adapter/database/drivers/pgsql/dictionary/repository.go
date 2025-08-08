@@ -2,8 +2,9 @@ package dictionary
 
 import (
 	"context"
-	"elastic-load/internal/adapter/database/orm"
-	"elastic-load/internal/model"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/web-rabis/elastic-
+	"github.com/web-rabis/elastic-load/internal/adapter/database/orm"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"gorm.io/gorm"
 	"log"
@@ -69,4 +70,28 @@ func (r *Repository) TypeDescriptionList(ctx context.Context, paging *model.Pagi
 		descriptions = append(descriptions, orm.NewObjectFromResult(&model.TypeDescription{}, result, "", model.MappingObjects).(*model.TypeDescription))
 	}
 	return descriptions, nil
+}
+
+func (r *Repository) StateList(ctx context.Context, paging *model.Paging) ([]*model.DState, error) {
+	var states []*model.DState
+	fields := []string{
+		"id",
+		"code",
+		"name",
+	}
+	var sql = "select " + strings.Join(fields, ",") + " from directory_state "
+	if paging != nil {
+		sql = sql + paging.Sql()
+	}
+	result, err := r.pool.Query(ctx, sql)
+	if err != nil {
+		log.Printf("[ERROR] error query %s\n", err.Error())
+		println(err.Error())
+		return nil, err
+	}
+	defer result.Close()
+	for result.Next() {
+		states = append(states, orm.NewObjectFromResult(&model.DState{}, result, "", model.MappingObjects).(*model.DState))
+	}
+	return states, nil
 }

@@ -2,10 +2,9 @@ package block
 
 import (
 	"context"
-	"elastic-load/internal/adapter/database/orm"
-	"elastic-load/internal/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/web-rabis/ela
 	"gorm.io/gorm"
 	"reflect"
 	"strings"

@@ -6,7 +6,7 @@ type Block struct {
 	IsRepeat      bool   `json:"isRepeat,omitempty" bson:"is_repeat"`
 	Priority      int64  `json:"priority,omitempty" bson:"priority"`
 	ExternalTable string `json:"externalTable,omitempty" bson:"external_table"`
-	KeyValue      string `json:"keyValue,omitempty" bson:"key_value"`
+	KeyValue      int64  `json:"keyValue,omitempty" bson:"key_value"`
 }
 type BlockField struct {
 	Id          int64  `json:"id,omitempty" bson:"id"`

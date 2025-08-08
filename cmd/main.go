@@ -2,19 +2,20 @@ package main
 
 import (
 	"context"
-	"elastic-load/internal/adapter/database/drivers"
-	"elastic-load/internal/adapter/database/drivers/pgsql"
-	"elastic-load/internal/config"
-	"elastic-load/internal/manager/block"
-	"elastic-load/internal/manager/ebook"
-	"elastic-load/internal/manager/elk"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/hashicorp/logutils"
+	"golang.org/x/sync/errgroup"
+
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql"
+	"github.com/web-rabis/elastic-load/internal/config"
+	"github.com/web-rabis/elastic-load/internal/server/http"
 )
 
 var (
@@ -27,8 +28,11 @@ func main() {
 	opts := config.Parse(new(config.APIServer)).(*config.APIServer)
 
 	setupLogUtils(opts.Dbg)
+
 	appCtx, appCtxCancel := context.WithCancel(context.Background())
 	defer appCtxCancel()
+
+	go catchForTermination(appCtxCancel, os.Interrupt, syscall.SIGTERM)
 
 	ds, err := SetupDatabase(appCtx, opts.DSURL, opts.DSName, opts.DSDB)
 	if err != nil {
@@ -37,18 +41,16 @@ func main() {
 	}
 	defer ds.Close(appCtx)
 
-	blockMan, err := block.NewBlockManager(appCtx, ds.Block())
-	if err != nil {
-		log.Println(err)
+	servers, serversCtx := errgroup.WithContext(appCtx)
+	servers.Go(func() error {
+		return http.Run(serversCtx, opts, ds, version)
+	})
+
+	if err := servers.Wait(); err != nil {
+		log.Printf("[INFO] process terminated, %s", err)
 		return
 	}
-	ebookMan := ebook.NewEbookManager(ds.Ebook(), blockMan)
-	elkMan, err := elk.NewElkManager(ebookMan)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	elkMan.Load(appCtx)
+
 }
 
 func setupLogUtils(inDebugMode bool) {

@@ -2,16 +2,17 @@ package pgsql
 
 import (
 	"context"
-	"elastic-load/internal/adapter/database/drivers/pgsql/block"
-	"elastic-load/internal/adapter/database/drivers/pgsql/dictionary"
-	"elastic-load/internal/adapter/database/drivers/pgsql/ebook"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/block"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/catalog"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/dictionary"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/ebook"
 
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"elastic-load/internal/adapter/database/drivers"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers"
 )
 
 const (
@@ -27,9 +28,10 @@ type PgSql struct {
 	pool   *pgxpool.Pool
 	config *pgxpool.Config
 
-	blockRepo drivers.BlockRepository
-	ebookRepo drivers.EbookRepository
-	dictRepo  drivers.DictionaryRepository
+	blockRepo   drivers.BlockRepository
+	ebookRepo   drivers.EbookRepository
+	dictRepo    drivers.DictionaryRepository
+	catalogRepo drivers.CatalogRepository
 
 	connectionTimeout time.Duration
 	ensureIdxTimeout  time.Duration
@@ -103,4 +105,10 @@ func (m *PgSql) Dictionary() drivers.DictionaryRepository {
 		m.dictRepo = dictionary.New(m.pool)
 	}
 	return m.dictRepo
+}
+func (m *PgSql) Catalog() drivers.CatalogRepository {
+	if m.catalogRepo == nil {
+		m.catalogRepo = catalog.New(m.pool)
+	}
+	return m.catalogRepo
 }

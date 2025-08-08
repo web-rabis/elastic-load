@@ -3,33 +3,46 @@ package elk
 import (
 	"bytes"
 	"context"
-	"elastic-load/internal/manager/ebook"
-	"elastic-load/internal/model"
 	"encoding/json"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esutil"
+	"github.com/web-rabis/elastic-load/internal/config"
+	"github.com/web-rabis/elastic-load/internal/manager/ebook"
+	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
 	"strconv"
+	"time"
 )
 
+type IManager interface {
+	FullLoad(ctx context.Context)
+	FullLoadInfo() LoadStatus
+}
 type Manager struct {
-	indexer  esutil.BulkIndexer
-	ebookMan ebook.IManager
+	indexer           esutil.BulkIndexer
+	ebookMan          ebook.IManager
+	fullLoadStatus    LoadStatus
+	deltaLoadStatus   LoadStatus
+	partialLoadStatus LoadStatus
 }
 
-func NewElkManager(ebookMan ebook.IManager) (*Manager, error) {
-	es, err := elasticsearch.NewDefaultClient()
+func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager) (*Manager, error) {
+	es, err := elasticsearch.NewClient(elasticsearch.Config{
+		Addresses:         []string{opts.ESURL},
+		EnableDebugLogger: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	indexer, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
-		Index:         "books_index", // имя индекса по умолчанию
+		Index:         opts.ESINDEX, // имя индекса по умолчанию
 		Client:        es,
 		FlushBytes:    5 * 1024 * 1024, // 5 MB
-		FlushInterval: 5_000_000_000,   // 5 секунд
+		FlushInterval: 5 * time.Second, // 5 секунд
 	})
 	if err != nil {
+		return nil, err
 	}
 	return &Manager{
 		indexer:  indexer,
@@ -37,7 +50,19 @@ func NewElkManager(ebookMan ebook.IManager) (*Manager, error) {
 	}, nil
 }
 
-func (m *Manager) Load(ctx context.Context) error {
+func (m *Manager) FullLoad(ctx context.Context) {
+	if m.fullLoadStatus.Running {
+		log.Printf("[ERROR] уже запущено\n")
+		return
+	}
+	m.fullLoadStatus.Start()
+	cnt, err := m.ebookMan.EbookCount(ctx)
+	if err != nil {
+		log.Printf("[ERROR] error %s\n", err.Error())
+		m.fullLoadStatus.Fail(err)
+		return
+	}
+	m.fullLoadStatus.InitTotal(cnt)
 	paging := &model.Paging{
 		Skip:    0,
 		Limit:   5000,
@@ -48,7 +73,8 @@ func (m *Manager) Load(ctx context.Context) error {
 		ebooks, err := m.ebookMan.EbookList(ctx, paging)
 		if err != nil {
 			log.Printf("[ERROR] error %s\n", err.Error())
-			return err
+			m.fullLoadStatus.Fail(err)
+			return
 		}
 		if len(ebooks) == 0 {
 			log.Printf("[ERROR] o count \n")
@@ -62,15 +88,20 @@ func (m *Manager) Load(ctx context.Context) error {
 			}
 			ebooksElk = append(ebooksElk, b)
 		}
-		err = m.LoadToIndex(ctx, ebooksElk)
+		err = m.loadToIndex(ctx, ebooksElk)
 		if err != nil {
 			log.Printf("[ERROR] error %s\n", err.Error())
 		}
+		m.fullLoadStatus.AddCounters(int64(paging.Limit), 0)
 		paging.NextPage()
+
 	}
-	return nil
+	m.fullLoadStatus.Finish()
 }
-func (m *Manager) LoadToIndex(ctx context.Context, ebooks []model.Ebook) error {
+func (m *Manager) FullLoadInfo() LoadStatus {
+	return m.fullLoadStatus
+}
+func (m *Manager) loadToIndex(ctx context.Context, ebooks []model.Ebook) error {
 	for _, book := range ebooks {
 		data, err := json.Marshal(book)
 		if err != nil {
@@ -78,7 +109,7 @@ func (m *Manager) LoadToIndex(ctx context.Context, ebooks []model.Ebook) error {
 			continue
 		}
 		err = m.indexer.Add(
-			context.Background(),
+			ctx,
 			esutil.BulkIndexerItem{
 				Action:     "index",
 				DocumentID: strconv.Itoa(int(book["id"].(int32))),
@@ -90,15 +121,16 @@ func (m *Manager) LoadToIndex(ctx context.Context, ebooks []model.Ebook) error {
 					err error,
 				) {
 					if err != nil {
-						log.Printf("Ошибка индексации: %v", err)
+						log.Printf("[ERROR] Ошибка индексации: %v", err)
 					} else {
-						log.Printf("Ошибка от ES [%s]: %s", resp.Status, resp.Error.Reason)
+						log.Printf("[ERROR] Ошибка от ES [%s]: %s", resp.Status, resp.Error.Reason)
 					}
 				},
 			},
 		)
 		if err != nil {
-			log.Printf("Ошибка добавления документа в буфер: %v", err)
+			println(err.Error())
+			log.Printf("[ERROR] Ошибка добавления документа в буфер: %v", err)
 			continue
 		}
 	}

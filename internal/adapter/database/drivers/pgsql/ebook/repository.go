@@ -2,8 +2,8 @@ package ebook
 
 import (
 	"context"
-	"elastic-load/internal/model"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/web-rabis/elastic-load/internal/model"
 	"gorm.io/gorm"
 	"log"
 	"strconv"
@@ -52,8 +52,8 @@ func (r *Repository) EbookElk(ctx context.Context, ebookElk model.Ebook, blocks 
 		where := "id="
 		if block.ExternalTable != "" {
 			tableName = tableName + "_" + block.ExternalTable
-			if block.KeyValue != "" {
-				where = "key_value=" + block.KeyValue + " and ebook_id="
+			if block.KeyValue != 0 {
+				where = "key_value=" + strconv.FormatInt(block.KeyValue, 10) + " and ebook_id="
 			} else {
 				where = "ebook_id="
 			}
@@ -99,6 +99,26 @@ func (r *Repository) EbookElk(ctx context.Context, ebookElk model.Ebook, blocks 
 	}
 
 	return ebookElk, nil
+}
+func (r *Repository) Count(ctx context.Context) (int64, error) {
+	sql := "select count(id) from ebook"
+
+	result, err := r.pool.Query(ctx, sql)
+	if err != nil {
+		return 0, err
+	}
+	defer result.Close()
+
+	count := int64(0)
+
+	for result.Next() {
+		err = result.Scan(&count)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return count, nil
 }
 func (r *Repository) ebookListFields() []string {
 	return []string{

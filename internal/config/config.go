@@ -8,9 +8,11 @@ import (
 )
 
 type DatabaseConfig struct {
-	DSName string `short:"n" long:"ds" env:"DATASTORE" description:"DataStore name (format: mongo/null)" required:"false" default:"postgres"`
-	DSDB   string `short:"d" long:"ds-db" env:"DATASTORE_DB" description:"DataStore database name (format: acquiring)" required:"false" default:"nlrk"`
-	DSURL  string `short:"u" long:"ds-url" env:"DATASTORE_URL" description:"DataStore URL (format: mongodb://localhost:27017)" required:"false" default:"postgres://postgres:postgres@localhost:5432/nlrk"`
+	DSName  string `short:"n" long:"ds" env:"DATASTORE" description:"DataStore name (format: mongo/null)" required:"false" default:"postgres"`
+	DSDB    string `short:"d" long:"ds-db" env:"DATASTORE_DB" description:"DataStore database name (format: acquiring)" required:"false" default:"nlrk"`
+	DSURL   string `short:"u" long:"ds-url" env:"DATASTORE_URL" description:"DataStore URL (format: mongodb://localhost:27017)" required:"false" default:"postgres://postgres:postgres@localhost:5432/nlrk"`
+	ESURL   string `long:"es-url" env:"ELASTICSEARCH_URL" description:"Elasticsearch URL" required:"false" default:"http://192.168.7.175:9200"`
+	ESINDEX string `long:"es-index" env:"ELASTICSEARCH_INDEX" description:"Elasticsearch INDEX" required:"false" default:"books-index"`
 }
 type ServerConfig struct {
 	ListenAddr string `short:"l" long:"listen" env:"LISTEN" description:"Listen Address (format: :8080|127.0.0.1:8080)" required:"false" default:":9191"`

@@ -2,7 +2,7 @@ package drivers
 
 import (
 	"context"
-	"elastic-load/internal/model"
+	"github.com/web-rabis/elastic-load/internal/model"
 )
 
 type DataStore interface {
@@ -18,6 +18,7 @@ type Base interface {
 	Block() BlockRepository
 	Ebook() EbookRepository
 	Dictionary() DictionaryRepository
+	Catalog() CatalogRepository
 }
 type BlockRepository interface {
 	BlockList(ctx context.Context, paging *model.Paging) ([]*model.Block, error)
@@ -25,9 +26,14 @@ type BlockRepository interface {
 }
 type EbookRepository interface {
 	List(ctx context.Context, paging *model.Paging) ([]model.Ebook, error)
+	Count(ctx context.Context) (int64, error)
 	EbookElk(ctx context.Context, ebookElk model.Ebook, blocks map[*model.Block][]*model.BlockField) (model.Ebook, error)
 }
 type DictionaryRepository interface {
 	BibliographicLevelList(ctx context.Context, paging *model.Paging) ([]*model.BibliographicLevel, error)
 	TypeDescriptionList(ctx context.Context, paging *model.Paging) ([]*model.TypeDescription, error)
+	StateList(ctx context.Context, paging *model.Paging) ([]*model.DState, error)
+}
+type CatalogRepository interface {
+	CatalogList(ctx context.Context, paging *model.Paging) ([]*model.Catalog, error)
 }
