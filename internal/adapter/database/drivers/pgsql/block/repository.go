@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/web-rabis/ela
+	"github.com/web-rabis/elastic-load/internal/adapter/database/orm"
+	"github.com/web-rabis/elastic-load/internal/model"
 	"gorm.io/gorm"
 	"reflect"
 	"strings"

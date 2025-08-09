@@ -26,7 +26,8 @@ func (res *Resource) Routes() chi.Router {
 
 	r.Group(func(r chi.Router) {
 		r.Get("/full", res.full)
-		r.Get("/full-status", res.fullStatus)
+		r.Get("/full/stop", res.fullStop)
+		r.Get("/full/status", res.fullStatus)
 	})
 
 	return r

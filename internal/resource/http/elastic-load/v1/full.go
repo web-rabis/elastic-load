@@ -6,5 +6,5 @@ import (
 )
 
 func (res *Resource) full(w http.ResponseWriter, r *http.Request) {
-	go res.elkMan.FullLoad(context.Background())
+	go res.elkMan.StartFullLoad(context.Background())
 }

@@ -3,9 +3,8 @@ package catalog
 import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/web-rabis/elastic-
 	"github.com/web-rabis/elastic-load/internal/adapter/database/orm"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/web-rabis/elastic-load/internal/model"
 	"gorm.io/gorm"
 	"log"
 	"strings"
