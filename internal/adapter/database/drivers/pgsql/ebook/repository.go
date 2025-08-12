@@ -20,10 +20,16 @@ func New(pool *pgxpool.Pool) *Repository {
 		pool: pool,
 	}
 }
-func (r *Repository) List(ctx context.Context, paging *model.Paging) ([]model.Ebook, error) {
+func (r *Repository) List(ctx context.Context, paging *model.Paging, filter *model.EbookFilter) ([]model.Ebook, error) {
 	var books []model.Ebook
 	fields := r.ebookListFields()
 	var sql = "select " + strings.Join(fields, ",") + " from ebook "
+	if filter != nil {
+		where := filter.Sql()
+		if where != "" {
+			sql += " where " + where
+		}
+	}
 	if paging != nil {
 		sql = sql + paging.Sql()
 	}
@@ -100,8 +106,39 @@ func (r *Repository) EbookElk(ctx context.Context, ebookElk model.Ebook, blocks 
 
 	return ebookElk, nil
 }
-func (r *Repository) Count(ctx context.Context) (int64, error) {
+func (r *Repository) EbookYearEditions(ctx context.Context, ebookId int64) ([]int64, error) {
+	var sql = "select year_edition from ebook_publishing where ebook_id= " + strconv.FormatInt(ebookId, 10)
+	result, err := r.pool.Query(ctx, sql)
+	if err != nil {
+		log.Printf("[ERROR] error query %s\n", err.Error())
+		println(err.Error())
+		return nil, err
+	}
+	defer result.Close()
+	var yearEditions = make([]int64, 0)
+	for result.Next() {
+		var yearEdition string
+		err = result.Scan(&yearEdition)
+		if err != nil {
+			continue
+		}
+		ye, err := strconv.ParseInt(yearEdition, 10, 64)
+		if err != nil {
+			continue
+		}
+		yearEditions = append(yearEditions, ye)
+	}
+	return yearEditions, nil
+
+}
+func (r *Repository) Count(ctx context.Context, filter *model.EbookFilter) (int64, error) {
 	sql := "select count(id) from ebook"
+	if filter != nil {
+		where := filter.Sql()
+		if where != "" {
+			sql += " where " + where
+		}
+	}
 
 	result, err := r.pool.Query(ctx, sql)
 	if err != nil {

@@ -15,9 +15,12 @@ import (
 )
 
 type IManager interface {
-	StartFullLoad(ctx context.Context)
+	StartFullLoad(ctx context.Context, filter *model.EbookFilter)
 	StatusFullLoad() *LoadStatus
 	StopFullLoad()
+	StartPartialLoad(ctx context.Context, filter *model.EbookFilter, updateFields []int64)
+	StatusPartialLoad() *LoadStatus
+	StopPartialLoad()
 }
 type Manager struct {
 	indexer           esutil.BulkIndexer
@@ -26,7 +29,8 @@ type Manager struct {
 	deltaLoadStatus   *LoadStatus
 	partialLoadStatus *LoadStatus
 
-	fullCancel context.CancelFunc
+	fullCancel    context.CancelFunc
+	partialCancel context.CancelFunc
 }
 
 func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager) (*Manager, error) {
@@ -40,6 +44,7 @@ func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager) (*Manager, e
 	indexer, err := esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
 		Index:         opts.ESINDEX, // имя индекса по умолчанию
 		Client:        es,
+		NumWorkers:    3,
 		FlushBytes:    5 * 1024 * 1024, // 5 MB
 		FlushInterval: 5 * time.Second, // 5 секунд
 	})
@@ -55,82 +60,36 @@ func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager) (*Manager, e
 	}, nil
 }
 
-func (m *Manager) StartFullLoad(ctx context.Context) {
-	if m.fullLoadStatus.Running {
-		log.Printf("[ERROR] уже запущено\n")
-		return
-	}
-	log.Printf("[DEBUG] Full load started")
-	// создаём контекст с отменой
-	cctx, cancel := context.WithCancel(ctx)
-	m.fullCancel = cancel // сохраняем для StopFullLoad
-	m.fullLoadStatus.Start()
-	cnt, err := m.ebookMan.EbookCount(cctx)
-	if err != nil {
-		log.Printf("[ERROR] error %s\n", err.Error())
-		m.fullLoadStatus.Fail(err)
-		return
-	}
-	m.fullLoadStatus.InitTotal(cnt)
-	paging := &model.Paging{
-		Skip:    0,
-		Limit:   5000,
-		SortKey: "id",
-		SortVal: 1,
-	}
-	for {
-		if m.fullLoadStatus.Stopping {
-			log.Printf("[DEBUG] Full load stopped")
-			break
-		}
-		ebooks, err := m.ebookMan.EbookList(cctx, paging)
-		if err != nil {
-			log.Printf("[ERROR] error %s\n", err.Error())
-			m.fullLoadStatus.Fail(err)
-			return
-		}
-		if len(ebooks) == 0 {
-			break
-		}
-		err = m.load(cctx, ebooks, m.fullLoadStatus)
-		if err != nil {
-			log.Printf("[ERROR] error %s\n", err.Error())
-		}
-		paging.NextPage()
-
-	}
-	log.Printf("[DEBUG] Full load finished")
-	m.fullLoadStatus.Finish()
-}
-func (m *Manager) StopFullLoad() {
-	log.Printf("[DEBUG] Full load will stopped")
-	m.fullLoadStatus.Stopping = true
-	if m.fullCancel != nil {
-		m.fullCancel() // прерываем все операции с контекстом
-	}
-}
-func (m *Manager) StatusFullLoad() *LoadStatus {
-	return m.fullLoadStatus
-}
-func (m *Manager) load(ctx context.Context, ebooks []model.Ebook, loadStatus *LoadStatus) error {
+func (m *Manager) load(ctx context.Context, ebooks []model.Ebook, updateFields []int64, loadStatus *LoadStatus) error {
 	var ebooksElk []model.Ebook
+	var action = "index"
+	if len(updateFields) > 0 {
+		action = "update"
+	}
 	for _, book := range ebooks {
-		b, err := m.ebookMan.EbookElk(ctx, book)
+		b, err := m.ebookMan.EbookElk(ctx, book, updateFields)
 		if err != nil {
 			continue
 		}
 		ebooksElk = append(ebooksElk, b)
 	}
-	err := m.loadToIndex(ctx, ebooksElk, loadStatus)
+	err := m.loadToIndex(ctx, action, ebooksElk, loadStatus)
 	if err != nil {
 		return err
 	}
 	loadStatus.AddProcessed(uint64(len(ebooksElk)))
 	return nil
 }
-func (m *Manager) loadToIndex(ctx context.Context, ebooks []model.Ebook, loadStatus *LoadStatus) error {
+func (m *Manager) loadToIndex(ctx context.Context, action string, ebooks []model.Ebook, loadStatus *LoadStatus) error {
+	retryOnConflict := 3
 	for _, book := range ebooks {
-		data, err := json.Marshal(book)
+		var body map[string]any = book
+		if action == "update" {
+			body = map[string]any{
+				"doc": book,
+			}
+		}
+		data, err := json.Marshal(body)
 		if err != nil {
 			log.Printf("Ошибка сериализации: %v", err)
 			continue
@@ -138,9 +97,10 @@ func (m *Manager) loadToIndex(ctx context.Context, ebooks []model.Ebook, loadSta
 		err = m.indexer.Add(
 			ctx,
 			esutil.BulkIndexerItem{
-				Action:     "index",
-				DocumentID: strconv.Itoa(int(book["id"].(int32))),
-				Body:       bytes.NewReader(data),
+				Action:          action,
+				DocumentID:      strconv.Itoa(int(book["id"].(int32))),
+				Body:            bytes.NewReader(data),
+				RetryOnConflict: &retryOnConflict,
 				OnSuccess: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem) {
 					loadStatus.AddCounters(1, 0)
 				},

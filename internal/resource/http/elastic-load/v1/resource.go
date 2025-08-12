@@ -28,6 +28,9 @@ func (res *Resource) Routes() chi.Router {
 		r.Get("/full", res.full)
 		r.Get("/full/stop", res.fullStop)
 		r.Get("/full/status", res.fullStatus)
+		r.Get("/partial", res.partial)
+		r.Get("/partial/stop", res.partialStop)
+		r.Get("/partial/status", res.partialStatus)
 	})
 
 	return r

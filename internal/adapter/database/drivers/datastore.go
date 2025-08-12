@@ -25,9 +25,10 @@ type BlockRepository interface {
 	BlockFieldList(ctx context.Context, paging *model.Paging) ([]*model.BlockField, error)
 }
 type EbookRepository interface {
-	List(ctx context.Context, paging *model.Paging) ([]model.Ebook, error)
-	Count(ctx context.Context) (int64, error)
+	List(ctx context.Context, paging *model.Paging, filter *model.EbookFilter) ([]model.Ebook, error)
+	Count(ctx context.Context, filter *model.EbookFilter) (int64, error)
 	EbookElk(ctx context.Context, ebookElk model.Ebook, blocks map[*model.Block][]*model.BlockField) (model.Ebook, error)
+	EbookYearEditions(ctx context.Context, ebookId int64) ([]int64, error)
 }
 type DictionaryRepository interface {
 	BibliographicLevelList(ctx context.Context, paging *model.Paging) ([]*model.BibliographicLevel, error)
