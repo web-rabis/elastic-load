@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
-	"time"
 )
 
 func (m *Manager) StartPartialLoad(ctx context.Context, filter *model.EbookFilter, updateFields []int64) {
@@ -51,7 +50,6 @@ func (m *Manager) StartPartialLoad(ctx context.Context, filter *model.EbookFilte
 		paging.NextPage()
 
 	}
-	time.Sleep(time.Second * 30)
 	log.Printf("[DEBUG] Partial load finished")
 	m.partialLoadStatus.Finish()
 

@@ -62,7 +62,11 @@ func (r *LoadStatus) EstimateETA() {
 	if r.Started == nil {
 		return
 	}
-	elapsedMin := time.Now().Sub(*r.Started).Minutes()
+	now := time.Now()
+	if r.Finished != nil {
+		now = *r.Finished
+	}
+	elapsedMin := now.Sub(*r.Started).Minutes()
 	if elapsedMin <= 0 {
 		return
 	}
@@ -76,7 +80,7 @@ func (r *LoadStatus) EstimateETA() {
 	}
 	etaMin := float64(remaining) / float64(r.Rpm)
 	eta := time.Duration(etaMin * float64(time.Minute))
-	finishAt := time.Now().Add(eta)
+	finishAt := now.Add(eta)
 	r.EstimateFinished = &finishAt
 	return
 }

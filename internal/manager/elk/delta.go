@@ -66,7 +66,6 @@ func (m *Manager) StartDeltaLoad(ctx context.Context) {
 			wm.LastTimestamp = last["create_date"].(time.Time)
 		}
 	}
-	//time.Sleep(time.Second * 30)
 	log.Printf("[DEBUG] Delta load finished")
 	m.deltaLoadStatus.Finish()
 	err = m.wmMan.Update(cctx, wm.Job, wm.LastId, wm.LastTimestamp)
