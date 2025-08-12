@@ -64,5 +64,6 @@ func (m *Manager) StopPartialLoad() {
 	}
 }
 func (m *Manager) StatusPartialLoad() *LoadStatus {
+	m.partialLoadStatus.EstimateETA()
 	return m.partialLoadStatus
 }

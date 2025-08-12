@@ -61,5 +61,6 @@ func (m *Manager) StopFullLoad() {
 	}
 }
 func (m *Manager) StatusFullLoad() *LoadStatus {
+	m.fullLoadStatus.EstimateETA()
 	return m.fullLoadStatus
 }

@@ -6,15 +6,17 @@ import (
 )
 
 type LoadStatus struct {
-	Started        *time.Time
-	Finished       *time.Time
-	Stopping       bool
-	Running        bool
-	Error          error
-	SuccessCount   uint64
-	ErrorCount     uint64
-	ProcessedCount uint64
-	TotalCount     int64
+	Started          *time.Time
+	Finished         *time.Time
+	EstimateFinished *time.Time
+	Stopping         bool
+	Running          bool
+	Error            error
+	SuccessCount     uint64
+	ErrorCount       uint64
+	ProcessedCount   uint64
+	TotalCount       int64
+	Rpm              uint64
 }
 
 func (r *LoadStatus) Start() {
@@ -54,4 +56,27 @@ func (r *LoadStatus) AddCounters(success, fail uint64) {
 }
 func (r *LoadStatus) AddProcessed(delta uint64) {
 	atomic.AddUint64(&r.ProcessedCount, delta)
+}
+
+func (r *LoadStatus) EstimateETA() {
+	if r.Started == nil {
+		return
+	}
+	elapsedMin := time.Now().Sub(*r.Started).Minutes()
+	if elapsedMin <= 0 {
+		return
+	}
+	r.Rpm = uint64(float64(r.ProcessedCount) / elapsedMin)
+	if r.Rpm <= 0 {
+		return
+	}
+	var remaining uint64 = 0
+	if uint64(r.TotalCount) > r.ProcessedCount {
+		remaining = uint64(r.TotalCount) - r.ProcessedCount
+	}
+	etaMin := float64(remaining) / float64(r.Rpm)
+	eta := time.Duration(etaMin * float64(time.Minute))
+	finishAt := time.Now().Add(eta)
+	r.EstimateFinished = &finishAt
+	return
 }

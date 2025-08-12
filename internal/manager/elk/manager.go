@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/esutil"
 	"github.com/web-rabis/elastic-load/internal/config"
 	"github.com/web-rabis/elastic-load/internal/manager/ebook"
+	"github.com/web-rabis/elastic-load/internal/manager/watermark"
 	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
 	"strconv"
@@ -21,19 +22,24 @@ type IManager interface {
 	StartPartialLoad(ctx context.Context, filter *model.EbookFilter, updateFields []int64)
 	StatusPartialLoad() *LoadStatus
 	StopPartialLoad()
+	StartDeltaLoad(ctx context.Context)
+	StatusDeltaLoad() *LoadStatus
+	StopDeltaLoad()
 }
 type Manager struct {
 	indexer           esutil.BulkIndexer
 	ebookMan          ebook.IManager
+	wmMan             watermark.IManager
 	fullLoadStatus    *LoadStatus
 	deltaLoadStatus   *LoadStatus
 	partialLoadStatus *LoadStatus
 
 	fullCancel    context.CancelFunc
 	partialCancel context.CancelFunc
+	deltaCancel   context.CancelFunc
 }
 
-func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager) (*Manager, error) {
+func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager, wmMan watermark.IManager) (*Manager, error) {
 	es, err := elasticsearch.NewClient(elasticsearch.Config{
 		Addresses:         []string{opts.ESURL},
 		EnableDebugLogger: true,
@@ -54,6 +60,7 @@ func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager) (*Manager, e
 	return &Manager{
 		indexer:           indexer,
 		ebookMan:          ebookMan,
+		wmMan:             wmMan,
 		fullLoadStatus:    &LoadStatus{},
 		partialLoadStatus: &LoadStatus{},
 		deltaLoadStatus:   &LoadStatus{},

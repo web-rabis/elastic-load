@@ -10,6 +10,7 @@ import (
 	"github.com/web-rabis/elastic-load/internal/manager/catalog"
 	"github.com/web-rabis/elastic-load/internal/manager/dictionary"
 	"github.com/web-rabis/elastic-load/internal/manager/ebook"
+	"github.com/web-rabis/elastic-load/internal/manager/watermark"
 
 	"github.com/web-rabis/elastic-load/internal/config"
 	"github.com/web-rabis/elastic-load/internal/manager/elk"
@@ -39,7 +40,8 @@ func Run(serversCtx context.Context, opts *config.APIServer, ds drivers.DataStor
 		return err
 	}
 	ebookMan := ebook.NewEbookManager(ds.Ebook(), blockMan, dictMan, catMan)
-	elkMan, err := elk.NewElkManager(opts, ebookMan)
+	wmMan := watermark.NewWatermarkManager(ds)
+	elkMan, err := elk.NewElkManager(opts, ebookMan, wmMan)
 	if err != nil {
 		return err
 	}

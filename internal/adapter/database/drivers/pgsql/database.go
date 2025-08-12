@@ -6,6 +6,7 @@ import (
 	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/catalog"
 	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/dictionary"
 	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/ebook"
+	"github.com/web-rabis/elastic-load/internal/adapter/database/drivers/pgsql/watermark"
 
 	"time"
 
@@ -32,6 +33,7 @@ type PgSql struct {
 	ebookRepo   drivers.EbookRepository
 	dictRepo    drivers.DictionaryRepository
 	catalogRepo drivers.CatalogRepository
+	wmRepo      drivers.WatermarkRepository
 
 	connectionTimeout time.Duration
 	ensureIdxTimeout  time.Duration
@@ -111,4 +113,10 @@ func (m *PgSql) Catalog() drivers.CatalogRepository {
 		m.catalogRepo = catalog.New(m.pool)
 	}
 	return m.catalogRepo
+}
+func (m *PgSql) Watermark() drivers.WatermarkRepository {
+	if m.wmRepo == nil {
+		m.wmRepo = watermark.New(m.pool)
+	}
+	return m.wmRepo
 }

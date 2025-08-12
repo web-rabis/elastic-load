@@ -3,6 +3,7 @@ package drivers
 import (
 	"context"
 	"github.com/web-rabis/elastic-load/internal/model"
+	"time"
 )
 
 type DataStore interface {
@@ -19,6 +20,8 @@ type Base interface {
 	Ebook() EbookRepository
 	Dictionary() DictionaryRepository
 	Catalog() CatalogRepository
+
+	Watermark() WatermarkRepository
 }
 type BlockRepository interface {
 	BlockList(ctx context.Context, paging *model.Paging) ([]*model.Block, error)
@@ -37,4 +40,8 @@ type DictionaryRepository interface {
 }
 type CatalogRepository interface {
 	CatalogList(ctx context.Context, paging *model.Paging) ([]*model.Catalog, error)
+}
+type WatermarkRepository interface {
+	ByJob(ctx context.Context, jobName string) (*model.Watermark, error)
+	Update(ctx context.Context, jobName string, lastId int64, lastTimestamp time.Time) error
 }

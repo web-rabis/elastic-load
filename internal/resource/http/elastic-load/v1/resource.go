@@ -31,6 +31,10 @@ func (res *Resource) Routes() chi.Router {
 		r.Get("/partial", res.partial)
 		r.Get("/partial/stop", res.partialStop)
 		r.Get("/partial/status", res.partialStatus)
+		r.Get("/delta", res.delta)
+		r.Get("/delta/stop", res.deltaStop)
+		r.Get("/delta/status", res.deltaStatus)
+
 	})
 
 	return r
