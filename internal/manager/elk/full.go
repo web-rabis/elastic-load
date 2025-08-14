@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
+	"time"
 )
 
 func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter) {
@@ -29,6 +30,8 @@ func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter) 
 		SortKey: "id",
 		SortVal: 1,
 	}
+	var lastId int64 = 0
+	var lastTimestamp time.Time
 	for {
 		if m.fullLoadStatus.Stopping {
 			log.Printf("[DEBUG] Full load stopped")
@@ -48,9 +51,18 @@ func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter) 
 			log.Printf("[ERROR] error %s\n", err.Error())
 		}
 		paging.NextPage()
-
+		last := ebooks[len(ebooks)-1]
+		lastId = int64(last["id"].(int32))
+		if last["edit_date"] != nil {
+			lastTimestamp = last["edit_date"].(time.Time)
+		} else if last["create_date"] != nil {
+			lastTimestamp = last["create_date"].(time.Time)
+		}
 	}
 	log.Printf("[DEBUG] Full load finished")
+	if !m.fullLoadStatus.Stopping {
+		err = m.wmMan.Update(cctx, "books_index", lastId, lastTimestamp)
+	}
 	m.fullLoadStatus.Finish()
 }
 func (m *Manager) StopFullLoad() {

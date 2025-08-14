@@ -24,7 +24,7 @@ func (m *Manager) StartDeltaLoad(ctx context.Context) {
 		return
 	}
 	filter := &model.EbookFilter{
-		LastId: &wm.LastId,
+		LastTimestamp: &wm.LastTimestamp,
 	}
 	cnt, err := m.ebookMan.EbookCount(cctx, filter)
 	if err != nil {
@@ -36,7 +36,7 @@ func (m *Manager) StartDeltaLoad(ctx context.Context) {
 	paging := &model.Paging{
 		Skip:    0,
 		Limit:   5000,
-		SortKey: "id",
+		SortKey: "edit_date",
 		SortVal: 1,
 	}
 	for {
@@ -67,8 +67,11 @@ func (m *Manager) StartDeltaLoad(ctx context.Context) {
 		}
 	}
 	log.Printf("[DEBUG] Delta load finished")
+	if !m.deltaLoadStatus.Stopping {
+		err = m.wmMan.Update(cctx, wm.Job, wm.LastId, wm.LastTimestamp)
+	}
 	m.deltaLoadStatus.Finish()
-	err = m.wmMan.Update(cctx, wm.Job, wm.LastId, wm.LastTimestamp)
+
 	if err != nil {
 		log.Printf("[ERROR] Delta update watermark error %s \n", err.Error())
 	}

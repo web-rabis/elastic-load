@@ -108,8 +108,9 @@ func setValue(t reflect.Type, v reflect.Value, result pgx.Rows, fdm map[string]i
 			v.Set(reflect.ValueOf(i))
 		}
 	} else if t.Name() == "Time" {
-		time1, err := time.Parse("2006-01-02", string(result.RawValues()[fdm[bson]]))
+		v1, err := result.Values()
 		if err == nil {
+			time1 := v1[fdm[bson]].(time.Time)
 			if isPtr {
 				v.Set(reflect.ValueOf(&time1))
 			} else {

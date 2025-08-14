@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type EbookFilter struct {
-	IdList []int64
-	LastId *int64
+	IdList        []int64
+	LastId        *int64
+	LastTimestamp *time.Time
 }
 
 func (f *EbookFilter) Sql() string {
@@ -31,6 +33,13 @@ func (f *EbookFilter) Sql() string {
 			sql += " and "
 		}
 		sql += " id>" + strconv.FormatInt(*f.LastId, 10)
+	}
+	if f.LastTimestamp != nil {
+		if sql != "" {
+			sql += " and "
+		}
+		t := f.LastTimestamp.Format("2006-01-02 15:04:05")
+		sql += "(edit_date>'" + t + "' or create_date>'" + t + "')"
 	}
 	return sql
 }
