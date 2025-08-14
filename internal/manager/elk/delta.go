@@ -2,6 +2,7 @@ package elk
 
 import (
 	"context"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
 	"time"
@@ -87,4 +88,39 @@ func (m *Manager) StopDeltaLoad() {
 func (m *Manager) StatusDeltaLoad() *LoadStatus {
 	m.deltaLoadStatus.EstimateETA()
 	return m.deltaLoadStatus
+}
+func (m *Manager) StartDeltaScheduler(ctx context.Context) error {
+	loc, err := time.LoadLocation("Asia/Almaty")
+	if err != nil {
+		return err
+	}
+	s, err := gocron.NewScheduler(
+		gocron.WithLocation(loc),
+		gocron.WithGlobalJobOptions(gocron.WithSingletonMode(gocron.LimitModeReschedule)),
+	)
+	if err != nil {
+		return err
+	}
+	_, err = s.NewJob(
+		gocron.CronJob("*/15 * * * *", false),
+		gocron.NewTask(func(jobCtx context.Context) {
+			m.StartDeltaLoad(jobCtx)
+		}),
+		gocron.WithContext(ctx),
+		gocron.WithName("delta-books_index"),
+	)
+	if err != nil {
+		return err
+	}
+	s.Start()
+	m.deltaSched = s
+	return nil
+}
+
+// метод остановки
+func (m *Manager) StopDeltaScheduler() error {
+	if m.deltaSched != nil {
+		return m.deltaSched.Shutdown()
+	}
+	return nil
 }

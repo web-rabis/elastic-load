@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esutil"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/web-rabis/elastic-load/internal/config"
 	"github.com/web-rabis/elastic-load/internal/manager/ebook"
 	"github.com/web-rabis/elastic-load/internal/manager/watermark"
@@ -25,6 +26,8 @@ type IManager interface {
 	StartDeltaLoad(ctx context.Context)
 	StatusDeltaLoad() *LoadStatus
 	StopDeltaLoad()
+	StartDeltaScheduler(ctx context.Context) error
+	StopDeltaScheduler() error
 }
 type Manager struct {
 	indexer           esutil.BulkIndexer
@@ -37,6 +40,8 @@ type Manager struct {
 	fullCancel    context.CancelFunc
 	partialCancel context.CancelFunc
 	deltaCancel   context.CancelFunc
+
+	deltaSched gocron.Scheduler
 }
 
 func NewElkManager(opts *config.APIServer, ebookMan ebook.IManager, wmMan watermark.IManager) (*Manager, error) {

@@ -45,6 +45,10 @@ func Run(serversCtx context.Context, opts *config.APIServer, ds drivers.DataStor
 	if err != nil {
 		return err
 	}
+	err = elkMan.StartDeltaScheduler(serversCtx)
+	if err != nil {
+
+	}
 
 	resources := []cherver.Resource{
 		http.NewVersionResource("/version", version),
