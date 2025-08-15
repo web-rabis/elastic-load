@@ -91,12 +91,7 @@ func (m *Manager) StatusDeltaLoad() *LoadStatus {
 	return m.deltaLoadStatus
 }
 func (m *Manager) StartDeltaScheduler(ctx context.Context) error {
-	loc, err := time.LoadLocation("Asia/Almaty")
-	if err != nil {
-		return err
-	}
 	s, err := gocron.NewScheduler(
-		gocron.WithLocation(loc),
 		gocron.WithGlobalJobOptions(gocron.WithSingletonMode(gocron.LimitModeReschedule)),
 	)
 	if err != nil {
