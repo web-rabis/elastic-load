@@ -2,10 +2,11 @@ package elk
 
 import (
 	"context"
-	"github.com/go-co-op/gocron/v2"
-	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
 	"time"
+
+	"github.com/go-co-op/gocron/v2"
+	"github.com/web-rabis/elastic-load/internal/model"
 )
 
 func (m *Manager) StartDeltaLoad(ctx context.Context) {
@@ -102,7 +103,7 @@ func (m *Manager) StartDeltaScheduler(ctx context.Context) error {
 		return err
 	}
 	_, err = s.NewJob(
-		gocron.CronJob("*/15 * * * *", false),
+		gocron.CronJob("*/5 * * * *", false),
 		gocron.NewTask(func(jobCtx context.Context) {
 			m.StartDeltaLoad(jobCtx)
 		}),

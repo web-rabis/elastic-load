@@ -2,6 +2,8 @@ package http
 
 import (
 	"context"
+	"log"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -47,7 +49,7 @@ func Run(serversCtx context.Context, opts *config.APIServer, ds drivers.DataStor
 	}
 	err = elkMan.StartDeltaScheduler(serversCtx)
 	if err != nil {
-
+		log.Printf("[ERROR] start delta scheduler error: %s\n", err.Error())
 	}
 
 	resources := []cherver.Resource{
