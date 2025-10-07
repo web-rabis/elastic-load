@@ -2,12 +2,13 @@ package ebook
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/web-rabis/elastic-load/internal/model"
-	"gorm.io/gorm"
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/web-rabis/elastic-load/internal/model"
+	"gorm.io/gorm"
 )
 
 type Repository struct {
@@ -171,6 +172,7 @@ func (r *Repository) ebookListFields() []string {
 		"volume_number",
 		"author",
 		"title",
+		"parent_id",
 	}
 }
 func (r *Repository) newEbook(fields []string, values []any) model.Ebook {
