@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
+	"strconv"
+	"time"
+
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esutil"
 	"github.com/go-co-op/gocron/v2"
@@ -11,13 +15,10 @@ import (
 	"github.com/web-rabis/elastic-load/internal/manager/ebook"
 	"github.com/web-rabis/elastic-load/internal/manager/watermark"
 	"github.com/web-rabis/elastic-load/internal/model"
-	"log"
-	"strconv"
-	"time"
 )
 
 type IManager interface {
-	StartFullLoad(ctx context.Context, filter *model.EbookFilter)
+	StartFullLoad(ctx context.Context, filter *model.EbookFilter, paging *model.Paging)
 	StatusFullLoad() *LoadStatus
 	StopFullLoad()
 	StartPartialLoad(ctx context.Context, filter *model.EbookFilter, updateFields []int64)

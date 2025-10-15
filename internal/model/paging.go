@@ -51,15 +51,9 @@ func PagingParseFromHttp(r *http.Request) (*Paging, error) {
 	}
 
 	if pageParam := r.URL.Query().Get("skip"); pageParam != "" {
-		page, err := strconv.Atoi(pageParam)
+		skip, err := strconv.Atoi(pageParam)
 		if err != nil {
 			return nil, err
-		}
-		skip := page - 1
-		if paging.Limit != 0 {
-			skip = paging.Limit * skip
-		} else {
-			skip = skip * 10
 		}
 		paging.Skip = skip
 	}

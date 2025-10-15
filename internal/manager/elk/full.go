@@ -2,12 +2,13 @@ package elk
 
 import (
 	"context"
-	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
-	"time"
+	"sync"
+
+	"github.com/web-rabis/elastic-load/internal/model"
 )
 
-func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter) {
+func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter, paging *model.Paging) {
 	if m.fullLoadStatus.Running {
 		log.Printf("[ERROR] уже запущено\n")
 		return
@@ -24,46 +25,47 @@ func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter) 
 		return
 	}
 	m.fullLoadStatus.InitTotal(cnt)
-	paging := &model.Paging{
-		Skip:    0,
-		Limit:   5000,
-		SortKey: "id",
-		SortVal: 1,
+	if paging.Limit == 0 {
+		paging.Limit = 1000
 	}
-	var lastId int64 = 0
-	var lastTimestamp time.Time
+	sem := make(chan struct{}, 5) // семафор на 2 слота
+	var wg sync.WaitGroup
 	for {
 		if m.fullLoadStatus.Stopping {
 			log.Printf("[DEBUG] Full load stopped")
 			break
 		}
-		ebooks, err := m.ebookMan.EbookList(cctx, paging, filter)
-		if err != nil {
-			log.Printf("[ERROR] error %s\n", err.Error())
-			m.fullLoadStatus.Fail(err)
-			return
-		}
-		if len(ebooks) == 0 {
-			break
-		}
-		err = m.load(cctx, ebooks, []int64{}, m.fullLoadStatus)
-		if err != nil {
-			log.Printf("[ERROR] error %s\n", err.Error())
-		}
+		sem <- struct{}{} // займём слот
+		wg.Add(1)
+		go func(p model.Paging, f *model.EbookFilter) {
+			defer wg.Done()
+			defer func() {
+				<-sem
+			}() // освободим слот
+			_ = m.BulkLoad(cctx, p, f)
+		}(*paging, filter)
 		paging.NextPage()
-		last := ebooks[len(ebooks)-1]
-		lastId = int64(last["id"].(int32))
-		if last["edit_date"] != nil {
-			lastTimestamp = last["edit_date"].(time.Time)
-		} else if last["create_date"] != nil {
-			lastTimestamp = last["create_date"].(time.Time)
-		}
 	}
 	log.Printf("[DEBUG] Full load finished")
-	if !m.fullLoadStatus.Stopping {
-		err = m.wmMan.Update(cctx, "books_index", lastId, lastTimestamp)
-	}
 	m.fullLoadStatus.Finish()
+}
+func (m *Manager) BulkLoad(cctx context.Context, paging model.Paging, filter *model.EbookFilter) error {
+	log.Printf("[DEBUG] Bulk load started skip=%v", paging.Skip)
+	ebooks, err := m.ebookMan.EbookList(cctx, &paging, filter)
+	if err != nil {
+		log.Printf("[ERROR] error %s\n", err.Error())
+		m.fullLoadStatus.Fail(err)
+		return err
+	}
+	if len(ebooks) == 0 {
+		return nil
+	}
+	err = m.load(cctx, ebooks, []int64{}, m.fullLoadStatus)
+	if err != nil {
+		log.Printf("[ERROR] error %s\n", err.Error())
+		return err
+	}
+	return err
 }
 func (m *Manager) StopFullLoad() {
 	log.Printf("[DEBUG] Full load will stopped")

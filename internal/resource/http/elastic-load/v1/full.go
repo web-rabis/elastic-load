@@ -2,9 +2,10 @@ package v1
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/go-chi/render"
 	"github.com/web-rabis/elastic-load/internal/model"
-	"net/http"
 )
 
 func (res *Resource) full(w http.ResponseWriter, r *http.Request) {
@@ -14,5 +15,11 @@ func (res *Resource) full(w http.ResponseWriter, r *http.Request) {
 		render.HTML(w, r, err.Error())
 		return
 	}
-	go res.elkMan.StartFullLoad(context.Background(), filter)
+	paging, err := model.PagingParseFromHttp(r)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.HTML(w, r, err.Error())
+		return
+	}
+	go res.elkMan.StartFullLoad(context.Background(), filter, paging)
 }
