@@ -29,8 +29,7 @@ func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter, 
 		paging.Limit = 1000
 	}
 	if paging.Skip != 0 {
-		m.fullLoadStatus.SuccessCount = uint64(paging.Skip)
-		m.fullLoadStatus.ProcessedCount = uint64(paging.Skip)
+		m.fullLoadStatus.StartOffset = uint64(paging.Skip)
 	}
 	sem := make(chan struct{}, 5) // семафор на 2 слота
 	var wg sync.WaitGroup

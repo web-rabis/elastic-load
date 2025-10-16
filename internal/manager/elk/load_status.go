@@ -12,6 +12,7 @@ type LoadStatus struct {
 	Stopping         bool
 	Running          bool
 	Error            error
+	StartOffset      uint64
 	SuccessCount     uint64
 	ErrorCount       uint64
 	ProcessedCount   uint64
