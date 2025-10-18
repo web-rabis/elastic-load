@@ -2,8 +2,10 @@ package elk
 
 import (
 	"context"
-	"github.com/web-rabis/elastic-load/internal/model"
 	"log"
+	"sync"
+
+	"github.com/web-rabis/elastic-load/internal/model"
 )
 
 func (m *Manager) StartPartialLoad(ctx context.Context, filter *model.EbookFilter, updateFields []int64) {
@@ -25,28 +27,29 @@ func (m *Manager) StartPartialLoad(ctx context.Context, filter *model.EbookFilte
 	m.partialLoadStatus.InitTotal(cnt)
 	paging := &model.Paging{
 		Skip:    0,
-		Limit:   5000,
+		Limit:   1000,
 		SortKey: "id",
 		SortVal: 1,
 	}
+	sem := make(chan struct{}, 5) // семафор на 2 слота
+	var wg sync.WaitGroup
 	for {
+		if int64(paging.Skip) > cnt {
+			break
+		}
 		if m.partialLoadStatus.Stopping {
 			log.Printf("[DEBUG] Partial load stopped")
 			break
 		}
-		ebooks, err := m.ebookMan.EbookList(cctx, paging, filter)
-		if err != nil {
-			log.Printf("[ERROR] Partial error %s\n", err.Error())
-			m.partialLoadStatus.Fail(err)
-			return
-		}
-		if len(ebooks) == 0 {
-			break
-		}
-		err = m.load(cctx, ebooks, updateFields, m.partialLoadStatus)
-		if err != nil {
-			log.Printf("[ERROR] Partial error %s\n", err.Error())
-		}
+		sem <- struct{}{} // займём слот
+		wg.Add(1)
+		go func(updateFields []int64, p model.Paging, f *model.EbookFilter) {
+			defer wg.Done()
+			defer func() {
+				<-sem
+			}() // освободим слот
+			_ = m.BulkLoad(cctx, updateFields, m.partialLoadStatus, p, f)
+		}(updateFields, *paging, filter)
 		paging.NextPage()
 
 	}
@@ -54,6 +57,7 @@ func (m *Manager) StartPartialLoad(ctx context.Context, filter *model.EbookFilte
 	m.partialLoadStatus.Finish()
 
 }
+
 func (m *Manager) StopPartialLoad() {
 	log.Printf("[DEBUG] Partial load will stopped")
 	m.partialLoadStatus.Stopping = true

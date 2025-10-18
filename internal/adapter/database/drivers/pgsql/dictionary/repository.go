@@ -2,12 +2,13 @@ package dictionary
 
 import (
 	"context"
+	"log"
+	"strings"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/web-rabis/elastic-load/internal/adapter/database/orm"
 	"github.com/web-rabis/elastic-load/internal/model"
 	"gorm.io/gorm"
-	"log"
-	"strings"
 )
 
 type Repository struct {
@@ -52,9 +53,9 @@ func (r *Repository) TypeDescriptionList(ctx context.Context, paging *model.Pagi
 		"id",
 		"code",
 		"name",
-		"type_ebooks",
+		"name_kz",
 	}
-	var sql = "select " + strings.Join(fields, ",") + " from bibliographic_level "
+	var sql = "select " + strings.Join(fields, ",") + " from type_description "
 	if paging != nil {
 		sql = sql + paging.Sql()
 	}

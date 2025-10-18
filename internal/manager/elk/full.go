@@ -34,6 +34,10 @@ func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter, 
 	sem := make(chan struct{}, 5) // семафор на 2 слота
 	var wg sync.WaitGroup
 	for {
+		if int64(paging.Skip) > cnt {
+			break
+		}
+
 		if m.fullLoadStatus.Stopping {
 			log.Printf("[DEBUG] Full load stopped")
 			break
@@ -45,25 +49,25 @@ func (m *Manager) StartFullLoad(ctx context.Context, filter *model.EbookFilter, 
 			defer func() {
 				<-sem
 			}() // освободим слот
-			_ = m.BulkLoad(cctx, p, f)
+			_ = m.BulkLoad(cctx, []int64{}, m.fullLoadStatus, p, f)
 		}(*paging, filter)
 		paging.NextPage()
 	}
 	log.Printf("[DEBUG] Full load finished")
 	m.fullLoadStatus.Finish()
 }
-func (m *Manager) BulkLoad(cctx context.Context, paging model.Paging, filter *model.EbookFilter) error {
+func (m *Manager) BulkLoad(cctx context.Context, updateFields []int64, status *LoadStatus, paging model.Paging, filter *model.EbookFilter) error {
 	log.Printf("[DEBUG] Bulk load started skip=%v", paging.Skip)
 	ebooks, err := m.ebookMan.EbookList(cctx, &paging, filter)
 	if err != nil {
 		log.Printf("[ERROR] error %s\n", err.Error())
-		m.fullLoadStatus.Fail(err)
+		status.Fail(err)
 		return err
 	}
 	if len(ebooks) == 0 {
 		return nil
 	}
-	err = m.load(cctx, ebooks, []int64{}, m.fullLoadStatus)
+	err = m.load(cctx, ebooks, updateFields, status)
 	if err != nil {
 		log.Printf("[ERROR] error %s\n", err.Error())
 		return err

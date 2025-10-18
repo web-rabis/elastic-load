@@ -77,7 +77,7 @@ func (r *LoadStatus) EstimateETA() {
 	}
 	var remaining uint64 = 0
 	if uint64(r.TotalCount) > r.ProcessedCount {
-		remaining = uint64(r.TotalCount) - r.ProcessedCount
+		remaining = uint64(r.TotalCount) - r.ProcessedCount - r.StartOffset
 	}
 	etaMin := float64(remaining) / float64(r.Rpm)
 	eta := time.Duration(etaMin * float64(time.Minute))
